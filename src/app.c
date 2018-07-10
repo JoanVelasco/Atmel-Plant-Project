@@ -187,7 +187,7 @@ void rxCallbackAppl(uint16_t length)
 	{
 		msgstate = MSG_START;
 		HAL_ReadUsart(&usartDescriptor,ApplRxBuffer,length);
-		appWriteDataToUsart(ApplRxBuffer, 1);		
+		//appWriteDataToUsart(ApplRxBuffer, 1);		
 		manageMessage();
 		if(msgstate == MSG_SUCCESS){
 			
@@ -279,7 +279,7 @@ void sendOtherEndDevice(void) {
 void manageMessage(void) {
 	if(ApplRxBuffer[0] == ASCII_DLE){
 		if(ApplRxBuffer[1] == ASCII_STX){
-			BSP_OnLed(LED_FIRST);
+			//BSP_OnLed(LED_FIRST);
 			messageSend.addr = ApplRxBuffer[2];
 			messageSend.info = ApplRxBuffer[3];
 			int i = 4, j = 0;
