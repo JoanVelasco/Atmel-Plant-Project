@@ -186,6 +186,7 @@ void rxCallbackAppl(uint16_t length)
 	if(CS_DEVICE_TYPE == DEV_TYPE_COORDINATOR)
 	{
 		msgstate = MSG_START;
+		readUsart(length);
 		HAL_ReadUsart(&usartDescriptor,ApplRxBuffer,length);
 		//appWriteDataToUsart(ApplRxBuffer, 1);		
 		manageMessage();
@@ -274,6 +275,15 @@ void sendOtherEndDevice(void) {
 	
 	appstate = APP_TRANSMIT_STATE;
 	SYS_PostTask(APL_TASK_ID);
+}
+
+void readUsart(uint16_t length) {
+	uint8_t data, applRxBufferPos = 0;
+	while(length--) {
+		HAL_ReadUsart(&usartDescriptor, &data, 1);
+		ApplRxBuffer[applRxBufferPos] = data;
+		applRxBufferPos++;
+	}
 }
 
 void manageMessage(void) {

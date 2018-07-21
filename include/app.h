@@ -36,6 +36,7 @@ void closeValve(void);
 void sendOtherEndDevice(void);
 void prepareSendUartArray(void);
 void manageMessage(void);
+void readUsart(uint16_t length);
 
 typedef enum{
 	APP_INIT_STATE,
