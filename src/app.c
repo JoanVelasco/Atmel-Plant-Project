@@ -186,7 +186,7 @@ void rxCallbackAppl(uint16_t length)
 	if(CS_DEVICE_TYPE == DEV_TYPE_COORDINATOR)
 	{
 		msgstate = MSG_START;
-		readUsart();
+		readUsart(length);
 		HAL_ReadUsart(&usartDescriptor,ApplRxBuffer,length);
 		//appWriteDataToUsart(ApplRxBuffer, 1);		
 		manageMessage();
