@@ -2,9 +2,9 @@
   \file app.c
   
 
-  \brief Basis-Anwendung.
+  \brief Main code for the atmel boards controlling the irrigation plant system
 
-  \author Markus Krauße
+  \author Joan Velasco i Estanyol, Kunil..., Nandhini...
 
 ******************************************************************************/
 
@@ -46,6 +46,7 @@ uint8_t aux[] = "XXX";
 uint8_t auxaux[] = "XXXXX";
 
 static uint8_t ApplRxBuffer[50];
+static uint8_t applRxBufferPos = 0;
 
 /*
 static HAL_SpiDescriptor_t spidescriptor= {
@@ -167,13 +168,16 @@ void APS_DataInd(APS_DataInd_t *indData)
 			
 			case 'M':
 				manual = messageRcv.data[0];
+				closeValve();
 				break;
 			
 			case 'V':
-				if(messageRcv.data[0] == 1) {
-					openValve();
-				} else if(messageRcv.data[0] == 0) {
-					closeValve();
+				if(manual == 1) {
+					if(messageRcv.data[0] == 1) {
+						openValve();
+					} else if(messageRcv.data[0] == 0) {
+						closeValve();
+					}
 				}
 		}
 	}
@@ -187,34 +191,34 @@ void rxCallbackAppl(uint16_t length)
 	{
 		msgstate = MSG_START;
 		readUsart(length);
-		HAL_ReadUsart(&usartDescriptor,ApplRxBuffer,length);
-		//appWriteDataToUsart(ApplRxBuffer, 1);		
-		manageMessage();
-		if(msgstate == MSG_SUCCESS){
+		if(applRxBufferPos > 6) {
+			applRxBufferPos = 0;
+			manageMessage();
+			if(msgstate == MSG_SUCCESS){
 			
-			transmitData.data = messageSend;
-			//memcpy(transmitData.data, &messageSend, sizeof(messageSend));
+				transmitData.data = messageSend;
 			
-			switch(messageSend.addr){
-				case 'R':
-					setupTransmitData(ROUTER_ADDRESS);
-					break;
+				switch(messageSend.addr){
+					case 'R':
+						setupTransmitData(ROUTER_ADDRESS);
+						break;
 					
-				case 'E':
-					setupTransmitData(ENDDEVICE_ADDRESS);
-					break;
+					case 'E':
+						setupTransmitData(ENDDEVICE_ADDRESS);
+						break;
 				
-				case 'B':
-					if(messageSend.info == 'M'){
-						manual = messageSend.data[0];
-					}
-					setupTransmitData(ROUTER_ADDRESS);
-					toSend = 1;
-					break;
-			}	
-			appstate = APP_TRANSMIT_STATE;
-			SYS_PostTask(APL_TASK_ID);
-		}	
+					case 'B':
+						if(messageSend.info == 'M'){
+							manual = messageSend.data[0];
+						}
+						setupTransmitData(ROUTER_ADDRESS);
+						toSend = 1;
+						break;
+				}	
+				appstate = APP_TRANSMIT_STATE;
+				SYS_PostTask(APL_TASK_ID);
+			}
+		}
 	}
 }
 
@@ -243,9 +247,7 @@ static void readSensorDoneCb(void) {
 	messageSend.info = 'H';
 	messageSend.data[0] = humidity;
 	
-	//transmitData.data = messageSend;
 	memcpy(&transmitData.data, &messageSend, sizeof(messageSend));
-		
 
 	appstate = APP_TRANSMIT_STATE;
 	SYS_PostTask(APL_TASK_ID);
@@ -270,7 +272,6 @@ void closeValve(void) {
 void sendOtherEndDevice(void) {
 	toSend = 0;
 	transmitData.data = messageSend;
-	//memcpy(transmitData.data, &messageSend, sizeof(messageSend));
 	setupTransmitData(ENDDEVICE_ADDRESS);
 	
 	appstate = APP_TRANSMIT_STATE;
@@ -278,7 +279,7 @@ void sendOtherEndDevice(void) {
 }
 
 void readUsart(uint16_t length) {
-	uint8_t data, applRxBufferPos = 0;
+	uint8_t data;
 	while(length--) {
 		HAL_ReadUsart(&usartDescriptor, &data, 1);
 		ApplRxBuffer[applRxBufferPos] = data;
@@ -289,7 +290,6 @@ void readUsart(uint16_t length) {
 void manageMessage(void) {
 	if(ApplRxBuffer[0] == ASCII_DLE){
 		if(ApplRxBuffer[1] == ASCII_STX){
-			//BSP_OnLed(LED_FIRST);
 			messageSend.addr = ApplRxBuffer[2];
 			messageSend.info = ApplRxBuffer[3];
 			int i = 4, j = 0;
