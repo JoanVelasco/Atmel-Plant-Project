@@ -5,6 +5,9 @@
   \brief Main code for the atmel boards controlling the irrigation plant system
 
   \author Joan Velasco i Estanyol, Kunil..., Nandhini...
+  
+  \In the LCD:	1:Router
+				2:End Device
 
 ******************************************************************************/
 
@@ -48,14 +51,30 @@ uint8_t auxaux[] = "XXXXX";
 static uint8_t ApplRxBuffer[50];
 static uint8_t applRxBufferPos = 0;
 
-/*
-static HAL_SpiDescriptor_t spidescriptor= {
-	.tty=SPI_CHANNEL_0,
-	.clockMode=SPI_CLOCK_MODE0,
-	.dataOrder=SPI_DATA_MSB_FIRST,
-	.baudRate=SPI_CLOCK_RATE_62,
-	.callback =displayLCDDoneCb
-}; */
+//command seq of internally powered
+uint8_t Command[50]={0xAE,0xD5,0x80,0xA8,0x1F,0xD3,0x00,0x40,0x8D,0x14,0xA1,0xC8,0xDA,0x02,0x81,0x82,0xD9,0xF1,0xDB,0x30,0xA4,0xA6,0xAF};
+//command sequence for standard display info
+uint8_t ConstantDisplay[32]={0x20,0x00,0x21,0x00,0xF1,0x22,0x00,0x00,0x21,0x38,0xF1,0x21,0x00,0xF1,0x22,0x03,0x03,0x21,0x38,0xF1,0x22,0x00,0x00,0x21,0x18,0x38,0x22,0x03,0x03,0x21,0x18,0x38};
+//pixel values for 0 to 9 and %
+uint8_t A0[8]={0x00,0xFF,0x81,0x81,0x81,0x81,0xFF,0x00};
+uint8_t A1[8]={0x00,0x00,0x00,0xFF,0x00,0x00,0x00,0x00};
+uint8_t A2[8]={0x00,0xF1,0x91,0x91,0x91,0x91,0x9F,0x00};
+uint8_t A3[8]={0x00,0x91,0x91,0x91,0x91,0x91,0xFF,0x00};
+uint8_t A4[8]={0x00,0x1F,0x10,0x10,0xFC,0x10,0x10,0x00};
+uint8_t A5[8]={0x00,0x9F,0x91,0x91,0x91,0x91,0xF1,0x00};
+uint8_t A6[8]={0x00,0xFF,0x91,0x91,0x91,0x91,0xF1,0x00};
+uint8_t A7[8]={0x00,0x01,0x01,0x01,0x01,0x01,0xFF,0x00};
+uint8_t A8[8]={0x00,0xFF,0x91,0x91,0x91,0x91,0xFF,0x00};
+uint8_t A9[8]={0x00,0x8F,0x91,0x91,0x91,0x91,0xFF,0x00};
+uint8_t APer[8]={0x00,0x40,0x26,0x16,0x08,0x64,0x62,0x00};
+uint8_t Ab[8]={0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+
+uint8_t digits[4];
+uint8_t h=0;
+uint8_t s=0;
+uint8_t a=32;
+uint8_t pos=0;
+uint8_t b;
 
 
 //ADC struct
@@ -94,6 +113,200 @@ static void initTransmitData(void)
 	dataReq.srcEndpoint = 1;
 	dataReq.APS_DataConf = APS_DataConf;
 }
+
+void SPI_MasterInit(void){
+	/* Enable SPI, Master, set clock rate fck/8 */
+	appWriteDataToUsart((uint8_t*)"SPIINIT\r\n",sizeof("SPIINIT\r\n")-1);
+	SPCR = (1<<SPE)|(1<<MSTR)|(1<<SPR0);
+	SPSR &= ~(1<<SPI2X);
+}
+
+
+void SPI_MasterTransmit(uint8_t byte){
+	appWriteDataToUsart((uint8_t*)&byte,1);
+	/* Start transmission */
+	SPDR = byte;
+	/* Wait for transmission complete */
+	while(!(SPSR & (1<<SPIF)));
+}
+uint8_t SeparationOfDigits(uint8_t humid)
+{
+	uint8_t number;
+	
+	number =humid%10;
+	
+	return number;
+}
+void PrintingDigits(uint8_t digit)
+{
+	switch(digit)
+	{
+		case 0:
+		for(int r=0;r<8;)
+		{
+			SPI_MasterTransmit(A0[r++]);
+		}
+		break;
+		case 1:
+		for(int r=0;r<8;)
+		{
+			SPI_MasterTransmit(A1[r++]);
+		}
+		break;
+		case 2:
+		for(int r=0;r<8;)
+		{
+			SPI_MasterTransmit(A2[r++]);
+		}
+		break;
+		
+		case 3:
+		for(int r=0;r<8;)
+		{
+			SPI_MasterTransmit(A3[r++]);
+		}
+		break;
+		case 4:
+		for(int r=0;r<8;)
+		{
+			SPI_MasterTransmit(A4[r++]);
+		}
+		break;
+		case 5:
+		for(int r=0;r<8;)
+		{
+			SPI_MasterTransmit(A5[r++]);
+		}
+		break;
+		case 6:
+		for(int r=0;r<8;)
+		{
+			SPI_MasterTransmit(A6[r++]);
+		}
+		break;
+		case 7:
+		for(int r=0;r<8;)
+		{
+			SPI_MasterTransmit(A7[r++]);
+		}
+		break;
+		case 8:
+		for(int r=0;r<8;)
+		{
+			SPI_MasterTransmit(A8[r++]);
+		}
+		break;
+		case 9:
+		for(int r=0;r<8;)
+		{
+			SPI_MasterTransmit(A9[r++]);
+		}
+		break;
+		
+	}
+}
+
+void StandardDisplayInfo()
+{
+	pos=0;
+	PORTE &= ~(1<<PE2);
+	for(pos=0;pos<8;)
+	{
+		SPI_MasterTransmit(ConstantDisplay[pos++]);
+	}
+	
+	if(pos==8)
+	{
+		//data
+		PORTE |= (1<<PE2);
+	}
+	
+	//plant 1
+	for(int j=0;j<8;)
+	{
+		SPI_MasterTransmit(A1[j++]);
+	}
+	PORTE &= ~(1<<PE2);
+	
+	for(pos=8;pos<11;)
+	{
+		SPI_MasterTransmit(ConstantDisplay[pos++]);
+	}
+	
+	PORTE |= (1<<PE2);
+	for(int n=0;n<8;)
+	{
+		SPI_MasterTransmit(APer[n++]);
+	}
+	
+	
+	PORTE &= ~(1<<PE2);
+	for(pos=11;pos<17;)
+	{
+		SPI_MasterTransmit(ConstantDisplay[pos++]);
+	}
+	
+	//data
+	PORTE |= (1<<PE2);
+	for(int l=0;l<8;)
+	{
+		SPI_MasterTransmit(A2[l++]);
+	}
+	
+	PORTE &= ~(1<<PE2);
+	for(pos=17;pos<20;)
+	{
+		SPI_MasterTransmit(ConstantDisplay[pos++]);
+	}
+
+	PORTE |= (1<<PE2);
+	for(int r=0;r<8;)
+	{
+		SPI_MasterTransmit(APer[r++]);
+	}
+	
+}
+
+
+void UpdateHumidityData(uint8_t device, uint8_t data)
+{
+	uint8_t Sensor;
+	Sensor=device;
+	PORTE &= ~(1<<PE2);
+	if(Sensor=='R')
+	{
+		for(pos=20;pos<26;)
+		{
+			SPI_MasterTransmit(ConstantDisplay[pos++]);
+		}
+	}
+	else if (Sensor=='E')
+	{
+		for(pos=20;pos<26;)
+		{
+			if(pos==21)
+			{
+				SPI_MasterTransmit(0x03);
+				pos++;
+			}
+			SPI_MasterTransmit(ConstantDisplay[pos++]);
+		}
+	}
+	
+	for(h=3;h>0;)
+	{
+		digits[h--]=SeparationOfDigits(data);
+		data=data/10;
+	}
+	PORTE |= (1<<PE2);
+	for(s=1;s<=3;)
+	{
+		PrintingDigits(digits[s++]);
+	}
+	//the array should point 20 location again when it is coming back.
+	pos=20;
+}
+
 
 static void setupTransmitData(int64_t addr) {
 	dataReq.profileId=1;
@@ -149,12 +362,11 @@ static void APS_DataConf(APS_DataConf_t * confInfo){
 //Function that is called when the board receives a message from another board, being from end device to coordinator or vice versa.
 void APS_DataInd(APS_DataInd_t *indData)
 {
-	//AppMessage_t *temporal = (AppMessage_t *) indData->asdu;
 	messageRcv = * ((struct Message *) indData->asdu);
-	//memcpy(&messageRcv, &temporal->data, sizeof(temporal->data));
 	
 	if(CS_DEVICE_TYPE == DEV_TYPE_COORDINATOR)
 	{
+		UpdateHumidityData(messageRcv.addr, messageRcv.data[0]);
 		prepareSendUartArray();
 		appWriteDataToUsart(sendUartArray, sizeof(sendUartArray));
 	}
@@ -226,9 +438,6 @@ void rxCallbackAppl(uint16_t length)
 static void readSensorDoneCb(void) {
 	uint32_t humidity = 0;
 	humidity = (adcData*100/MAX_HUMIDUTY_SENSOR);
-	
-	//TODO: LCD print humidity value
-
 	if(manual == 0){
 		if (humidity <= plantType) {
 			openValve();
@@ -256,14 +465,14 @@ static void readSensorDoneCb(void) {
 
 //Function that open the valve
 void openValve(void) {
-	PORTE |= (1<<PE2);
+	PORTE |= (1<<PE1);
 	BSP_OnLed(LED_FIRST);
 }
 
 
 //Function that closes the valve
 void closeValve(void) {
-	PORTE &= ~(1<<PE2);
+	PORTE &= ~(1<<PE1);
 	BSP_OffLed(LED_FIRST);
 }
 
@@ -318,11 +527,6 @@ void prepareSendUartArray(void){
 	sendUartArray[7] = ASCII_ETX;
 }
 
-/*static void displayLCDDoneCb(void)
-{
-	appWriteDataToUsart((uint8_t*)"success\r\n",sizeof("success\r\n")-1);
-}*/
-
 
 //TaskHandler is the function called over an over by the main's endless loop that allows the system to work with BitCloud
 void APL_TaskHandler(void){
@@ -334,9 +538,43 @@ void APL_TaskHandler(void){
 			
 			DDRB |= (1<<PB2) | (1<<PB3) | (1<<PB1);
 			HAL_OpenAdc(&adcdescriptor);
-			//HAL_OpenSpi(&spidescriptor);
-			DDRE |= (1<<PE2);
+			DDRE |= (1<<PE1);
+#if CS_DEVICE_TYPE == DEV_TYPE_COORDINATOR
+			//MOSI and SCK as Output
+			DDRB |= (1<<PB2);
+			DDRB |= (1<<PB1);
+			//MISO as Input
+			DDRB &= ~(1<<PB3);
 			
+			//to set clock mode and freq
+			SPI_MasterInit();
+			//Chip select as output
+			DDRG |=(1<<PG0);
+			//chip select low
+			PORTG &= ~(1<<PG0);
+
+			//Data/Command pin as output
+			DDRE |=(1<<PE2);
+			//command indication
+			PORTE &= ~(1<<PE2);
+			//RES
+			DDRD |= (1<<PD5);
+			
+			
+			//RES as low for power stablisation sequence
+			PORTD &= ~(1<<PD5);
+			//RES as high for operation
+			PORTD |= (1<<PD5);
+			//command
+			PORTE &= ~(1<<PE2);
+			//initialization sequence
+			for(pos=0;pos<25;)
+			{
+				SPI_MasterTransmit(Command[pos++]);
+			}
+			PORTE |= (1<<PE2);
+			StandardDisplayInfo();
+#endif
 			appstate = APP_START_JOIN_NETWORK_STATE;
 			SYS_PostTask(APL_TASK_ID);
 			break;
@@ -369,7 +607,6 @@ void APL_TaskHandler(void){
 			break;
 			
 		case APP_TRANSMIT_STATE:
-			//HAL_WriteSpi(&spidescriptor,display,3);
 			APS_DataReq(&dataReq);
 			break;
 			

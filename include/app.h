@@ -12,7 +12,7 @@
 #define _APP_H
 
 #define APP_SENDE_INTERVAL    1000
-#define MAX_HUMIDUTY_SENSOR	  146
+#define MAX_HUMIDUTY_SENSOR	  200
 #define ASCII_DLE			  16
 #define ASCII_STX			  2
 #define ASCII_ETX			  3
@@ -37,6 +37,15 @@ void sendOtherEndDevice(void);
 void prepareSendUartArray(void);
 void manageMessage(void);
 void readUsart(uint16_t length);
+
+//LCD function delcaration
+void SPI_MasterInit(void);
+void SPI_MasterTransmit(uint8_t byte);
+uint8_t SeparationOfDigits(uint8_t humid);
+void PrintingDigits(uint8_t digit);
+void StandardDisplayInfo();
+void UpdateHumidityData(uint8_t device, uint8_t data);
+
 
 typedef enum{
 	APP_INIT_STATE,
